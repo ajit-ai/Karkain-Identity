@@ -1,0 +1,15 @@
+// Integration verification for the Karkain-Identity public API.
+import identity
+
+func main() {
+    let u = new_user(1, "alice")
+    u = assign_role(u, "admin")
+    u = assign_role(u, "reviewer")
+    u = set_token(u, "tok-123")
+
+    assert_eq(role_count(u), 2)
+    assert(has_role(u, "admin"))
+    assert(authenticate(u, "tok-123"))
+    assert(authenticate(u, "bad") == false)
+    println(user_summary(u))
+}

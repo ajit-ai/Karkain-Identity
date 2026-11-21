@@ -1,0 +1,7 @@
+name = "karkain-identity"
+version = "0.1.0-dev"
+description = "User identity, roles and token authentication for Karkain"
+license = "MIT"
+targets = ["native"]
+
+[dependencies]

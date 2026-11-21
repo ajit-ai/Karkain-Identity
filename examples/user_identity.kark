@@ -1,0 +1,13 @@
+// Karkain-Identity runnable example: create and authenticate a user.
+import identity
+
+func main() {
+    let u = new_user(42, "carol")
+    u = assign_role(u, "editor")
+    u = assign_role(u, "reviewer")
+    u = set_token(u, "s3cret")
+
+    println(user_summary(u))
+    println("admin=" + str(has_role(u, "admin")))
+    println("authenticated=" + str(authenticate(u, "s3cret")))
+}

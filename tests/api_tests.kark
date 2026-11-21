@@ -1,0 +1,56 @@
+// Native tests for Karkain-Identity.
+
+func test_new_user() {
+    let u = new_user(1, "alice")
+    assert_eq(user_id(u), 1)
+    assert_eq(user_name(u), "alice")
+    assert_eq(role_count(u), 0)
+}
+
+func test_assign_role() {
+    let u = assign_role(new_user(1, "alice"), "admin")
+    assert(has_role(u, "admin"))
+    assert_eq(role_count(u), 1)
+}
+
+func test_assign_multiple_roles() {
+    let u = assign_role(assign_role(new_user(1, "a"), "admin"), "editor")
+    assert_eq(role_count(u), 2)
+    assert(has_role(u, "admin"))
+    assert(has_role(u, "editor"))
+}
+
+func test_assign_role_is_unique() {
+    let u = assign_role(assign_role(new_user(1, "a"), "admin"), "admin")
+    assert_eq(role_count(u), 1)
+}
+
+func test_has_role_boundaries() {
+    let u = assign_role(new_user(1, "a"), "admin")
+    assert(has_role(u, "admin"))
+    assert(has_role(u, "admi") == false)
+    assert(has_role(u, "adminx") == false)
+    assert(has_role(u, "") == false)
+}
+
+func test_clear_roles() {
+    let u = clear_roles(assign_role(new_user(1, "a"), "admin"))
+    assert_eq(role_count(u), 0)
+    assert(has_role(u, "admin") == false)
+}
+
+func test_set_token_and_authenticate() {
+    let u = set_token(new_user(1, "a"), "secret")
+    assert(authenticate(u, "secret"))
+    assert(authenticate(u, "wrong") == false)
+}
+
+func test_authenticate_without_token() {
+    let u = new_user(1, "a")
+    assert(authenticate(u, "") == false)
+}
+
+func test_user_summary() {
+    let u = assign_role(new_user(7, "bob"), "editor")
+    assert_eq(user_summary(u), "#7:bob:roles=1")
+}

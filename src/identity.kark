@@ -1,0 +1,141 @@
+// Karkain-Identity - user identity and authentication primitives.
+// Karkain Language v1.2.0 verified baseline (tag v1.2.0,
+// commit 77d70693e1e3134dac312a303bffafa7d50fa988).
+//
+// Scope boundary: this framework models user records, role membership and
+// a simple token equality check. It does not hash passwords, sign tokens
+// or integrate with an external identity provider.
+//
+// User representation: [id, name, roles-csv, token].
+// Arrays are values; mutating functions return the updated user.
+
+// new_user creates a user with no roles and an empty token.
+public func new_user(id, name) {
+    let u = []
+    u = push(u, id)
+    u = push(u, name)
+    u = push(u, "")
+    u = push(u, "")
+    return u
+}
+
+// user_id returns the user identifier.
+public func user_id(user) {
+    return user[0]
+}
+
+// user_name returns the display name.
+public func user_name(user) {
+    return user[1]
+}
+
+// assign_role adds a role to the comma-separated role list.
+public func assign_role(user, role) {
+    if has_role(user, role) {
+        return user
+    }
+    let roles = user[2]
+    if len(roles) > 0 {
+        roles = roles + ","
+    }
+    roles = roles + role
+    let out = []
+    out = push(out, user[0])
+    out = push(out, user[1])
+    out = push(out, roles)
+    out = push(out, user[3])
+    return out
+}
+
+// has_role reports whether the role string contains a role name.
+public func has_role(user, role) {
+    let roles = user[2]
+    let n = len(roles)
+    let r = len(role)
+    if r == 0 {
+        return false
+    }
+    let i = 0
+    while (i + r <= n) {
+        let boundary_start = true
+        let boundary_end = true
+        if i > 0 {
+            if roles[i - 1] != "," {
+                boundary_start = false
+            }
+        }
+        if i + r < n {
+            if roles[i + r] != "," {
+                boundary_end = false
+            }
+        }
+        if boundary_start {
+            if boundary_end {
+                let found = true
+                let j = 0
+                while (j < r) {
+                    if roles[i + j] != role[j] {
+                        found = false
+                    }
+                    j = j + 1
+                }
+                if found {
+                    return true
+                }
+            }
+        }
+        i = i + 1
+    }
+    return false
+}
+
+// clear_roles removes all roles from a user.
+public func clear_roles(user) {
+    let out = []
+    out = push(out, user[0])
+    out = push(out, user[1])
+    out = push(out, "")
+    out = push(out, user[3])
+    return out
+}
+
+// set_token assigns an authentication token.
+public func set_token(user, token) {
+    let out = []
+    out = push(out, user[0])
+    out = push(out, user[1])
+    out = push(out, user[2])
+    out = push(out, token)
+    return out
+}
+
+// authenticate checks a presented token by exact equality.
+public func authenticate(user, token) {
+    let expected = user[3]
+    if len(expected) == 0 {
+        return false
+    }
+    return expected == token
+}
+
+// role_count returns the number of assigned roles.
+public func role_count(user) {
+    let roles = user[2]
+    if len(roles) == 0 {
+        return 0
+    }
+    let n = 1
+    let i = 0
+    while (i < len(roles)) {
+        if roles[i] == "," {
+            n = n + 1
+        }
+        i = i + 1
+    }
+    return n
+}
+
+// user_summary builds a one-line identity diagnostic.
+public func user_summary(user) {
+    return "#" + str(user_id(user)) + ":" + user_name(user) + ":roles=" + str(role_count(user))
+}
