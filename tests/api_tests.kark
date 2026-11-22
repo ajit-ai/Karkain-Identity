@@ -54,3 +54,92 @@ func test_user_summary() {
     let u = assign_role(new_user(7, "bob"), "editor")
     assert_eq(user_summary(u), "#7:bob:roles=1")
 }
+
+// --- Phase 2 regression ---
+
+func test_phase1_regression() {
+    let u = set_token(assign_role(new_user(1, "alice"), "admin"), "tok")
+    assert_eq(user_id(u), 1)
+    assert(has_role(u, "admin"))
+    assert(authenticate(u, "tok"))
+    assert(authenticate(u, "bad") == false)
+}
+
+// --- Phase 2 additions ---
+
+func test_account_registry() {
+    let a = register_account(register_account(new_accounts(), new_user(1, "alice")), new_user(2, "bob"))
+    assert_eq(account_count(a), 2)
+    assert(duplicate_identity(a, 1))
+    assert(duplicate_identity(a, 9) == false)
+    assert_eq(find_account_name(a, 2), "bob")
+    assert_eq(find_account_name(a, 9), "")
+    let replaced = register_account(a, new_user(1, "alice2"))
+    assert_eq(account_count(replaced), 2)
+    assert_eq(find_account_name(replaced, 1), "alice2")
+}
+
+func test_account_lifecycle() {
+    let s = suspend_account(activate_account(new_account_state(), 1), 2)
+    assert_eq(account_status(s, 1), "active")
+    assert_eq(account_status(s, 2), "suspended")
+    assert_eq(account_status(s, 9), "missing")
+}
+
+func test_authentication_workflow() {
+    let req = new_auth_request(1, "secret")
+    let provider = new_credential_provider("test-provider")
+    assert(verify_credential(provider, req[1], "secret"))
+    assert(verify_credential(provider, "wrong", "secret") == false)
+    assert(verify_credential(new_credential_provider("other"), "secret", "secret") == false)
+    let ok = new_auth_result(true, 0)
+    assert(auth_result_ok(ok))
+    assert_eq(auth_result_code(ok), 0)
+}
+
+func test_lockout_policy() {
+    let p = new_lockout_policy(3)
+    let s = record_failed_attempt(record_failed_attempt(new_attempt_state(), 1), 1)
+    assert_eq(failed_attempts(s, 1), 2)
+    assert(is_locked(p, s, 1) == false)
+    let locked = record_failed_attempt(s, 1)
+    assert(is_locked(p, locked, 1))
+    assert(is_locked(p, new_attempt_state(), 1) == false)
+}
+
+func test_sessions() {
+    let s = new_session("s1", 7)
+    assert_eq(session_user(s), 7)
+    assert_eq(session_state(s), "active")
+    assert_eq(session_state(expire_session(s)), "expired")
+    assert_eq(session_state(s), "active")
+}
+
+func test_claims() {
+    let u = add_claim(add_claim(new_user(1, "a"), "dept", "eng"), "level", 3)
+    assert_eq(claim_value(u, "dept", ""), "eng")
+    assert_eq(claim_value(u, "level", 0), 3)
+    assert_eq(claim_value(u, "none", "x"), "x")
+}
+
+func test_authorization_delegation() {
+    let ctx = new_auth_context(7, "admin")
+    assert_eq(ctx[1], "admin")
+    assert(context_allows("allow"))
+    assert(context_allows("deny") == false)
+}
+
+func test_recovery_and_mfa() {
+    let r = new_recovery(1, "reset-token")
+    assert_eq(recovery_token(r), "reset-token")
+    assert(recovery_complete(r) == false)
+    assert(recovery_complete(complete_recovery(r)))
+    assert_eq(mfa_contract(), "provider.verify(challenge,response)")
+    assert_eq(new_mfa_provider("totp")[0], "totp")
+}
+
+func test_identity_events() {
+    let e = identity_event(identity_event(new_identity_events(), "login", "ok"), "logout", "done")
+    assert_eq(identity_event_count(e), 2)
+    assert_eq(identity_event_count(new_identity_events()), 0)
+}

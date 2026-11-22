@@ -1,0 +1,21 @@
+// Karkain-Identity Phase 2 example: account and authentication workflow.
+import identity
+
+func main() {
+    let accounts = register_account(new_accounts(), new_user(1, "alice"))
+    let state = activate_account(new_account_state(), 1)
+    let req = new_auth_request(1, "secret")
+    let provider = new_credential_provider("test-provider")
+    let result = new_auth_result(verify_credential(provider, req[1], "secret"), 0)
+
+    println("accounts=" + str(account_count(accounts)))
+    println("status=" + account_status(state, 1))
+    println("authenticated=" + str(auth_result_ok(result)))
+
+    let retry = record_failed_attempt(new_attempt_state(), 1)
+    println("locked=" + str(is_locked(new_lockout_policy(1), retry, 1)))
+
+    let session = new_session("s1", 1)
+    println("session=" + session_state(expire_session(session)))
+    println("events=" + str(identity_event_count(identity_event(new_identity_events(), "login", "ok"))))
+}

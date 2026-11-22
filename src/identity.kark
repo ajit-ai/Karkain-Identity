@@ -139,3 +139,288 @@ public func role_count(user) {
 public func user_summary(user) {
     return "#" + str(user_id(user)) + ":" + user_name(user) + ":roles=" + str(role_count(user))
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2 additions. Phase 1 user/role/token APIs are unchanged. Credential
+// verification below is a provider interface with a deterministic test
+// implementation only; secure credential storage, signed tokens and
+// persistent sessions are BLOCKED by the missing reviewed crypto provider.
+
+// new_accounts creates an empty account registry.
+public func new_accounts() {
+    return []
+}
+
+// register_account adds a user record to an account registry.
+public func register_account(accounts, user) {
+    let out = []
+    out = push(out, user_id(user))
+    out = push(out, user_name(user))
+    out = push(out, role_count(user))
+    let i = 0
+    while (i < len(accounts)) {
+        if accounts[i] == user_id(user) {
+            i = i + 3
+        } else {
+            out = push(out, accounts[i])
+            out = push(out, accounts[i + 1])
+            out = push(out, accounts[i + 2])
+            i = i + 3
+        }
+    }
+    return out
+}
+
+// account_count returns the number of registered accounts.
+public func account_count(accounts) {
+    return len(accounts) / 3
+}
+
+// duplicate_identity reports whether an id is already registered.
+public func duplicate_identity(accounts, id) {
+    let i = 0
+    while (i < len(accounts)) {
+        if accounts[i] == id { return true }
+        i = i + 3
+    }
+    return false
+}
+
+// find_account_name returns the name for an id or "".
+public func find_account_name(accounts, id) {
+    let i = 0
+    while (i < len(accounts)) {
+        if accounts[i] == id { return accounts[i + 1] }
+        i = i + 3
+    }
+    return ""
+}
+
+// new_account_state creates an account status store.
+public func new_account_state() {
+    return []
+}
+
+// set_account_state records a lifecycle status for an id.
+public func set_account_state(state, id, status) {
+    let out = []
+    out = push(out, id)
+    out = push(out, status)
+    let i = 0
+    while (i < len(state)) {
+        if state[i] == id {
+            i = i + 2
+        } else {
+            out = push(out, state[i])
+            out = push(out, state[i + 1])
+            i = i + 2
+        }
+    }
+    return out
+}
+
+// account_status returns a status or "missing".
+public func account_status(state, id) {
+    let i = 0
+    while (i < len(state)) {
+        if state[i] == id { return state[i + 1] }
+        i = i + 2
+    }
+    return "missing"
+}
+
+// activate_account marks an account active.
+public func activate_account(state, id) {
+    return set_account_state(state, id, "active")
+}
+
+// suspend_account marks an account suspended.
+public func suspend_account(state, id) {
+    return set_account_state(state, id, "suspended")
+}
+
+// new_auth_request creates an authentication request.
+public func new_auth_request(id, credential) {
+    let r = []
+    r = push(r, id)
+    r = push(r, credential)
+    return r
+}
+
+// new_auth_result builds an authentication result.
+public func new_auth_result(ok, code) {
+    let r = []
+    r = push(r, ok)
+    r = push(r, code)
+    return r
+}
+
+// auth_result_ok reports whether authentication succeeded.
+public func auth_result_ok(result) { return result[0] }
+
+// auth_result_code returns a result code.
+public func auth_result_code(result) { return result[1] }
+
+// new_credential_provider declares a provider name.
+public func new_credential_provider(name) {
+    let p = []
+    p = push(p, name)
+    return p
+}
+
+// verify_credential performs deterministic equality for a test provider.
+// Real providers must supply their own secure implementation.
+public func verify_credential(provider, presented, expected) {
+    if provider[0] == "test-provider" { return presented == expected }
+    return false
+}
+
+// new_lockout_policy creates a bounded failed-attempt policy.
+public func new_lockout_policy(max_attempts) {
+    let p = []
+    p = push(p, max_attempts)
+    return p
+}
+
+// new_attempt_state creates a failed-attempt store.
+public func new_attempt_state() {
+    return []
+}
+
+// record_failed_attempt increments the failure count for an id.
+public func record_failed_attempt(state, id) {
+    let out = []
+    out = push(out, id)
+    out = push(out, failed_attempts(state, id) + 1)
+    let i = 0
+    while (i < len(state)) {
+        if state[i] == id {
+            i = i + 2
+        } else {
+            out = push(out, state[i])
+            out = push(out, state[i + 1])
+            i = i + 2
+        }
+    }
+    return out
+}
+
+// failed_attempts returns the recorded count for an id.
+public func failed_attempts(state, id) {
+    let i = 0
+    while (i < len(state)) {
+        if state[i] == id { return state[i + 1] }
+        i = i + 2
+    }
+    return 0
+}
+
+// is_locked reports whether an account exceeded the policy.
+public func is_locked(policy, state, id) {
+    return failed_attempts(state, id) >= policy[0]
+}
+
+// new_session creates a session for a user id.
+public func new_session(id, user) {
+    let s = []
+    s = push(s, id)
+    s = push(s, user)
+    s = push(s, "active")
+    return s
+}
+
+// session_user returns the user id of a session.
+public func session_user(session) { return session[1] }
+
+// session_state returns the session state.
+public func session_state(session) { return session[2] }
+
+// expire_session marks a session expired.
+public func expire_session(session) {
+    let out = []
+    out = push(out, session[0])
+    out = push(out, session[1])
+    out = push(out, "expired")
+    return out
+}
+
+// add_claim appends a claim to a user record.
+public func add_claim(user, key, value) {
+    let out = user
+    out = push(out, key)
+    out = push(out, value)
+    return out
+}
+
+// claim_value returns a claim value or a fallback.
+public func claim_value(user, key, fallback) {
+    let i = 4
+    while (i < len(user)) {
+        if user[i] == key { return user[i + 1] }
+        i = i + 2
+    }
+    return fallback
+}
+
+// new_auth_context builds a delegation context for a user and role.
+public func new_auth_context(user, role) {
+    let c = []
+    c = push(c, user)
+    c = push(c, role)
+    return c
+}
+
+// context_allows accepts a decision supplied by Karkain-Security.
+public func context_allows(decision) {
+    return decision == "allow"
+}
+
+// new_recovery creates a recovery workflow record.
+public func new_recovery(id, token) {
+    let r = []
+    r = push(r, id)
+    r = push(r, token)
+    r = push(r, "pending")
+    return r
+}
+
+// recovery_token returns a recovery token.
+public func recovery_token(recovery) { return recovery[1] }
+
+// complete_recovery marks a recovery workflow completed.
+public func complete_recovery(recovery) {
+    let out = []
+    out = push(out, recovery[0])
+    out = push(out, recovery[1])
+    out = push(out, "complete")
+    return out
+}
+
+// recovery_complete reports whether recovery completed.
+public func recovery_complete(recovery) { return recovery[2] == "complete" }
+
+// new_mfa_provider declares an MFA provider interface.
+public func new_mfa_provider(name) {
+    let p = []
+    p = push(p, name)
+    return p
+}
+
+// mfa_contract documents the required provider operation.
+public func mfa_contract() { return "provider.verify(challenge,response)" }
+
+// new_identity_events creates an identity audit log.
+public func new_identity_events() {
+    return []
+}
+
+// identity_event appends a structured identity event.
+public func identity_event(events, kind, detail) {
+    let out = events
+    out = push(out, kind)
+    out = push(out, detail)
+    return out
+}
+
+// identity_event_count returns the number of recorded events.
+public func identity_event_count(events) { return len(events) / 2 }
